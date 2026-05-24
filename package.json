@@ -1,51 +1,43 @@
 {
   "name": "@npv12/opencode-context-sidebar",
-  "version": "0.1.0",
-  "description": "Context progress sidebar plugin for OpenCode",
+  "version": "0.1.3",
+  "description": "OpenCode TUI sidebar plugin for context usage progress",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "exports": {
+    "./tui": "./dist/tui.tsx"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
-    "typecheck": "tsc --noEmit",
-    "format": "prettier --write \"src/**/*.ts\"",
-    "format:check": "prettier --check \"src/**/*.ts\"",
-    "prepare": "husky"
+    "build": "rm -rf dist && mkdir -p dist && cp index.ts dist/tui.tsx",
+    "pack:dry": "npm pack --dry-run",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "opencode",
-    "plugin",
-    "context",
-    "sidebar"
+    "opencode-plugin",
+    "sidebar",
+    "context"
   ],
   "author": "npv12",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/npv12/opencode-memory-md.git"
+    "url": "https://github.com/npv12/opencode-memory-md.git",
+    "directory": "opencode-context-sidebar"
   },
   "publishConfig": {
     "access": "public"
   },
+  "engines": {
+    "opencode": ">=1.4.3"
+  },
   "dependencies": {
-    "@opencode-ai/plugin": "^1.15.10",
-    "@opentui/core": "^0.2.0",
-    "@opentui/solid": "^0.2.0",
-    "solid-js": "^1.9.0"
-  },
-  "devDependencies": {
-    "@trivago/prettier-plugin-sort-imports": "^4.3.0",
-    "@types/bun": "^1.3.8",
-    "@types/node": "^22.19.11",
-    "husky": "^9.1.7",
-    "prettier": "^3.8.1",
-    "typescript": "^5.9.3"
-  },
-  "opencode": {
-    "type": "plugin"
-  },
-  "files": [
-    "dist"
-  ]
+    "@opencode-ai/plugin": "^1.4.3",
+    "@opentui/core": "^0.2.2",
+    "@opentui/solid": "^0.2.2",
+    "solid-js": "^1.9.12"
+  }
 }
