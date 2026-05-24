@@ -1,6 +1,6 @@
 {
   "name": "@npv12/opencode-context-sidebar",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "OpenCode TUI sidebar plugin for context usage progress",
   "type": "module",
   "exports": {
@@ -25,7 +25,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/npv12/opencode-memory-md.git",
+    "url": "https://github.com/npv12/opencode-context-sidebar.git",
     "directory": "opencode-context-sidebar"
   },
   "publishConfig": {
