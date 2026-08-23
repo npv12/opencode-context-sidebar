@@ -4,14 +4,17 @@
   "description": "OpenCode V2 TUI sidebar plugin for context usage progress",
   "type": "module",
   "exports": {
-    "./tui": "./dist/tui.tsx"
+    ".": "./dist/index.js",
+    "./tui": "./dist/tui.js"
   },
   "files": [
     "dist",
+    "src",
     "README.md"
   ],
   "scripts": {
-    "build": "rm -rf dist && mkdir -p dist && cp index.tsx dist/tui.tsx",
+    "build": "bun scripts/build.ts",
+    "build:watch": "bun --watch scripts/build.ts",
     "typecheck": "tsc --noEmit",
     "check": "bun run typecheck",
     "pack:dry": "npm pack --dry-run",
