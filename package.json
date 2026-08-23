@@ -1,6 +1,6 @@
 {
   "name": "@npv12/opencode-context-sidebar",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "OpenCode V2 TUI sidebar plugin for context usage progress",
   "type": "module",
   "exports": {
