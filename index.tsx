@@ -61,7 +61,18 @@ function View(props: { context: Plugin.Context; sessionID: string }) {
     const model: ModelInfo | undefined = models()?.find(
       (item) => item.providerID === last.model.providerID && item.id === last.model.id,
     );
-    return { tokens, contextWindow: model?.limit.context ?? 0 };
+    return {
+      tokens,
+      contextWindow: model?.limit.context ?? 0,
+      cachePercent:
+        last.tokens.input + last.tokens.cache.read + last.tokens.cache.write > 0
+          ? Math.round(
+              (last.tokens.cache.read /
+                (last.tokens.input + last.tokens.cache.read + last.tokens.cache.write)) *
+                100,
+            )
+          : undefined,
+    };
   });
 
   const percent = createMemo(() => {
@@ -72,7 +83,8 @@ function View(props: { context: Plugin.Context; sessionID: string }) {
   const detailLine = createMemo(() => {
     const state = usage();
     const limitText = state && state.contextWindow > 0 ? formatInt(state.contextWindow) : "--";
-    return `${formatInt(state?.tokens ?? 0)} / ${limitText} / ${formatMoney(cost())}`;
+    const cacheText = state?.cachePercent === undefined ? "--" : `${state.cachePercent}%`;
+    return `${formatInt(state?.tokens ?? 0)} / ${limitText} / ${cacheText} / ${formatMoney(cost())}`;
   });
 
   const color = createMemo(() => {
