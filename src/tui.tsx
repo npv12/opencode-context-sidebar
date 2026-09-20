@@ -8,9 +8,8 @@
 
 import type { Plugin } from "@opencode/plugin/tui";
 import { TextAttributes } from "@opentui/core";
-import { createMemo, createResource, createSignal, onCleanup, onMount, Show } from "solid-js";
+import { createMemo, Show } from "solid-js";
 import { calculateUsage, safeNumber } from "./context";
-import { loadSessionMessages } from "./messages";
 
 const BAR_WIDTH = 24;
 
@@ -29,27 +28,13 @@ function buildBar(percent: number): { filled: string; empty: string } {
 }
 
 function View(props: { context: Plugin.Context; sessionID: string }) {
-  const [messageRevision, setMessageRevision] = createSignal(0);
-  const [sessionMessages] = createResource(
-    () => {
-      messageRevision();
-      return props.sessionID;
-    },
-    (sessionID) => loadSessionMessages(props.context, sessionID),
-  );
+  const sessionMessages = createMemo(() => props.context.data.session.message.list(props.sessionID));
   const session = createMemo(() => props.context.data.session.get(props.sessionID));
   const cost = createMemo(() => props.context.data.session.cost(props.sessionID));
   const models = createMemo(() => props.context.data.location.model.list(session()?.location));
 
-  onMount(() => {
-    const stop = props.context.data.on("session.usage.updated", (event) => {
-      if (event.data.sessionID === props.sessionID) setMessageRevision((revision) => revision + 1);
-    });
-    onCleanup(stop);
-  });
-
   const usage = createMemo(() => {
-    const messages = sessionMessages() ?? [];
+    const messages = sessionMessages();
     return calculateUsage(messages, session()?.revert?.messageID, models(), session()?.model);
   });
 
@@ -74,7 +59,7 @@ function View(props: { context: Plugin.Context; sessionID: string }) {
   });
 
   return (
-    <Show when={usage()}>
+    <Show when={usage() || cost() > 0}>
       <box>
         <text fg={props.context.theme.text.base} attributes={TextAttributes.BOLD}>
           Context
