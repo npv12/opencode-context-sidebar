@@ -9,9 +9,31 @@
 import type { ModelInfo, SessionMessageAssistant, SessionMessageInfo } from "@opencode/client";
 import type { Plugin } from "@opencode/plugin/tui";
 import { TextAttributes } from "@opentui/core";
-import { createMemo, Show } from "solid-js";
+import { createMemo, createResource, createSignal, onCleanup, onMount, Show } from "solid-js";
 
 const BAR_WIDTH = 24;
+const MAX_SESSION_MESSAGES = 5_000;
+const MESSAGE_PAGE_SIZE = 100;
+
+async function loadSessionMessages(context: Plugin.Context, sessionID: string): Promise<SessionMessageInfo[]> {
+  const messages: SessionMessageInfo[] = [];
+  let cursor: string | undefined;
+
+  while (messages.length < MAX_SESSION_MESSAGES) {
+    const limit = Math.min(MESSAGE_PAGE_SIZE, MAX_SESSION_MESSAGES - messages.length);
+    const response = await context.client.message.list({
+      sessionID,
+      limit,
+      ...(cursor ? { cursor } : { order: "asc" }),
+    });
+    messages.push(...response.data);
+    const nextCursor = response.cursor.next ?? undefined;
+    if (!nextCursor || nextCursor === cursor || response.data.length === 0) break;
+    cursor = nextCursor;
+  }
+
+  return messages.slice(0, MAX_SESSION_MESSAGES);
+}
 
 function formatInt(value: number): string {
   return new Intl.NumberFormat("en-US").format(Math.max(0, Math.round(value)));
@@ -58,14 +80,29 @@ function lastAssistantWithUsage(messages: readonly SessionMessageInfo[], boundar
 }
 
 function View(props: { context: Plugin.Context; sessionID: string }) {
-  const messages = createMemo(() => props.context.data.session.message.list(props.sessionID));
+  const [messageRevision, setMessageRevision] = createSignal(0);
+  const [sessionMessages] = createResource(
+    () => {
+      messageRevision();
+      return props.sessionID;
+    },
+    (sessionID) => loadSessionMessages(props.context, sessionID),
+  );
   const session = createMemo(() => props.context.data.session.get(props.sessionID));
   const cost = createMemo(() => props.context.data.session.cost(props.sessionID));
   const models = createMemo(() => props.context.data.location.model.list(session()?.location));
 
+  onMount(() => {
+    const stop = props.context.data.on("session.usage.updated", (event) => {
+      if (event.data.sessionID === props.sessionID) setMessageRevision((revision) => revision + 1);
+    });
+    onCleanup(stop);
+  });
+
   const usage = createMemo(() => {
-    const previous = assistantMessagesWithUsage(messages(), session()?.revert?.messageID);
-    const last = lastAssistantWithUsage(messages(), session()?.revert?.messageID);
+    const messages = sessionMessages() ?? [];
+    const previous = assistantMessagesWithUsage(messages, session()?.revert?.messageID);
+    const last = lastAssistantWithUsage(messages, session()?.revert?.messageID);
     if (!last) return undefined;
     const cacheReadTokens = previous.reduce((total, message) => total + message.tokens.cache.read, 0);
     const totalInputTokens = previous.reduce(
