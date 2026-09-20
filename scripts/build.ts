@@ -13,8 +13,8 @@ const result = await Bun.build({
   format: "esm",
   plugins: [createSolidTransformPlugin()],
   external: [
-    "@opencode-ai/plugin/tui",
-    "@opencode-ai/client",
+    "@opencode/plugin/tui",
+    "@opencode/client",
     "@opentui/core",
     "@opentui/core-*",
     "@opentui/keymap",

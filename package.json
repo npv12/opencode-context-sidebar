@@ -40,15 +40,14 @@
     "provenance": true
   },
   "engines": {
-    "opencode": "0.0.0-beta-17963"
+    "opencode": ">=2.0.0"
   },
   "dependencies": {
-    "@opencode-ai/client": "0.0.0-beta-17963",
-    "@opencode-ai/plugin": "0.0.0-beta-17963",
-    "@opencode-ai/theme": "0.0.0-beta-17963",
-    "@opentui/core": "0.5.7",
-    "@opentui/solid": "0.5.7",
-    "solid-js": "1.9.14"
+    "@opencode/client": "2.0.10",
+    "@opencode/plugin": "2.0.10",
+    "@opentui/core": "0.5.11",
+    "@opentui/solid": "0.5.11",
+    "solid-js": "1.9.15"
   },
   "devDependencies": {
     "@tsconfig/bun": "1.0.9",

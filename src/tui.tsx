@@ -6,8 +6,8 @@
  * every section the host appends to the sidebar, regardless of enable order.
  */
 
-import type { Plugin } from "@opencode-ai/plugin/tui";
-import type { ModelInfo, SessionMessageAssistant, SessionMessageInfo } from "@opencode-ai/client";
+import type { ModelInfo, SessionMessageAssistant, SessionMessageInfo } from "@opencode/client";
+import type { Plugin } from "@opencode/plugin/tui";
 import { TextAttributes } from "@opentui/core";
 import { createMemo, Show } from "solid-js";
 
@@ -96,14 +96,14 @@ function View(props: { context: Plugin.Context; sessionID: string }) {
   return (
     <Show when={usage()}>
       <box>
-        <text fg={props.context.theme.text.default} attributes={TextAttributes.BOLD}>
+        <text fg={props.context.theme.text.base} attributes={TextAttributes.BOLD}>
           Context
         </text>
         <box flexDirection="row" gap={1}>
           <text fg={color()}>{buildBar(percent())}</text>
           <text fg={color()}> {percent()}%</text>
         </box>
-        <text fg={props.context.theme.text.subdued}>{detailLine()}</text>
+        <text fg={props.context.theme.text.base}>{detailLine()}</text>
       </box>
     </Show>
   );
@@ -112,7 +112,7 @@ function View(props: { context: Plugin.Context; sessionID: string }) {
 export default {
   id: "npv12.context-sidebar",
   setup(context) {
-    context.ui.slot({
+    return context.ui.slot({
       prepend: "sidebar.content",
       render: (props) => <View context={context} sessionID={props.sessionID} />,
     });
