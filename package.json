@@ -17,6 +17,7 @@
     "build:watch": "bun --watch scripts/build.ts",
     "typecheck": "tsc --noEmit",
     "check": "bun run typecheck",
+    "test": "node --test tests/*.test.ts",
     "pack:dry": "npm pack --dry-run",
     "prepublishOnly": "npm run build"
   },
