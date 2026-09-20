@@ -59,11 +59,26 @@ export function calculateUsage(
   models: readonly ModelInfo[] | undefined,
   selectedModel?: ModelRef,
 ): { tokens: number; contextWindow: number; cacheHitPercent?: number } | undefined {
-  const previous = assistantMessagesWithUsage(messages, boundary);
   const last = lastAssistantWithUsage(messages, boundary);
   if (boundary && !last && !messages.some((message) => message?.id === boundary)) return undefined;
 
-  const totals = previous.reduce(
+  const current = last ? tokenParts(last) : undefined;
+  const modelRef = last?.model ?? selectedModel;
+  const model = modelRef
+    ? models?.find((item) => item.providerID === modelRef.providerID && item.id === modelRef.id)
+    : undefined;
+  const contextWindow = nonNegativeFinite(model?.limit.context);
+  if (!current) return { tokens: 0, contextWindow };
+  const tokens = current.input + current.output + current.reasoning + current.cacheRead + current.cacheWrite;
+  if (tokens <= 0) return { tokens: 0, contextWindow };
+  return {
+    tokens,
+    contextWindow,
+  };
+}
+
+export function calculateCacheHitPercent(messages: readonly SessionMessageInfo[], boundary?: string): number | undefined {
+  const totals = assistantMessagesWithUsage(messages, boundary).reduce(
     (total, message) => {
       const parts = tokenParts(message);
       return {
@@ -74,22 +89,8 @@ export function calculateUsage(
     },
     { cacheRead: 0, input: 0, cacheWrite: 0 },
   );
-  const current = last ? tokenParts(last) : undefined;
-  const modelRef = last?.model ?? selectedModel;
-  const model = modelRef
-    ? models?.find((item) => item.providerID === modelRef.providerID && item.id === modelRef.id)
-    : undefined;
-  const contextWindow = nonNegativeFinite(model?.limit.context);
-  if (!current) return { tokens: 0, contextWindow };
-  const tokens = current.input + current.output + current.reasoning + current.cacheRead + current.cacheWrite;
-  if (tokens <= 0) return { tokens: 0, contextWindow };
   const totalInputTokens = totals.input + totals.cacheRead + totals.cacheWrite;
-  return {
-    tokens,
-    contextWindow,
-    cacheHitPercent:
-      totalInputTokens > 0 ? Math.round((totals.cacheRead / totalInputTokens) * 10000) / 100 : undefined,
-  };
+  return totalInputTokens > 0 ? Math.round((totals.cacheRead / totalInputTokens) * 10000) / 100 : undefined;
 }
 
 export function safeNumber(value: unknown): number {

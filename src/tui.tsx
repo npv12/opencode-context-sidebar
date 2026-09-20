@@ -9,9 +9,12 @@
 import type { Plugin } from "@opencode/plugin/tui";
 import { TextAttributes } from "@opentui/core";
 import { createMemo, Show } from "solid-js";
-import { calculateUsage, safeNumber } from "./context";
+import { calculateCacheHitPercent, calculateUsage, safeNumber } from "./context";
+import { loadSessionMessages } from "./database";
+import { createSessionMessageCache } from "./history";
 
 const BAR_WIDTH = 24;
+const sessionMessageCache = createSessionMessageCache(loadSessionMessages, 5_000);
 
 function formatInt(value: number): string {
   return new Intl.NumberFormat("en-US").format(Math.max(0, Math.round(safeNumber(value))));
@@ -29,6 +32,7 @@ function buildBar(percent: number): { filled: string; empty: string } {
 
 function View(props: { context: Plugin.Context; sessionID: string }) {
   const sessionMessages = createMemo(() => props.context.data.session.message.list(props.sessionID));
+  const historicalMessages = createMemo(() => sessionMessageCache.get(props.sessionID, sessionMessages()));
   const session = createMemo(() => props.context.data.session.get(props.sessionID));
   const cost = createMemo(() => props.context.data.session.cost(props.sessionID));
   const models = createMemo(() => props.context.data.location.model.list(session()?.location));
@@ -37,6 +41,7 @@ function View(props: { context: Plugin.Context; sessionID: string }) {
     const messages = sessionMessages();
     return calculateUsage(messages, session()?.revert?.messageID, models(), session()?.model);
   });
+  const cacheHitPercent = createMemo(() => calculateCacheHitPercent(historicalMessages(), session()?.revert?.messageID));
 
   const percent = createMemo(() => {
     const state = usage();
@@ -46,7 +51,7 @@ function View(props: { context: Plugin.Context; sessionID: string }) {
   const detailLine = createMemo(() => {
     const state = usage();
     const limitText = state && state.contextWindow > 0 ? formatInt(state.contextWindow) : "--";
-    const cacheText = state?.cacheHitPercent === undefined ? "--" : `${state.cacheHitPercent}%`;
+    const cacheText = cacheHitPercent() === undefined ? "--" : `${cacheHitPercent()}%`;
     return `${formatInt(state?.tokens ?? 0)} / ${limitText} / ${cacheText} / ${formatMoney(cost())}`;
   });
 
