@@ -10,11 +10,16 @@ export async function loadSessionMessages(context: Plugin.Context, sessionID: st
 
   while (messages.length < MAX_SESSION_MESSAGES) {
     const limit = Math.min(MESSAGE_PAGE_SIZE, MAX_SESSION_MESSAGES - messages.length);
-    const response = await context.client.message.list({
-      sessionID,
-      limit,
-      ...(cursor ? { cursor } : { order: "asc" }),
-    });
+    let response;
+    try {
+      response = await context.client.message.list({
+        sessionID,
+        limit,
+        ...(cursor ? { cursor } : { order: "asc" }),
+      });
+    } catch {
+      return messages;
+    }
     const page = Array.isArray(response?.data) ? response.data : [];
     messages.push(...page);
     const nextCursor = response?.cursor?.next ?? undefined;

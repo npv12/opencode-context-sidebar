@@ -25,6 +25,23 @@ test("loads pages until the cursor is exhausted", async () => {
   assert.deepEqual(messages, [{ id: "one" }, { id: "two" }]);
 });
 
+test("returns an empty list when the session is not ready", async () => {
+  const messages = await loadSessionMessages(
+    {
+      client: {
+        message: {
+          list: async () => {
+            throw new Error("session not found");
+          },
+        },
+      },
+    } as never,
+    "session",
+  );
+
+  assert.deepEqual(messages, []);
+});
+
 test("stops on a repeated cursor and tolerates malformed page data", async () => {
   const messages = await loadSessionMessages(
     context([
