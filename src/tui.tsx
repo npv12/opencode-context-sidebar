@@ -21,15 +21,29 @@ function formatMoney(value: number): string {
   return `$${value.toFixed(2)}`;
 }
 
-function buildBar(percent: number): string {
+function buildBar(percent: number): { filled: string; empty: string } {
   const clamped = Math.max(0, Math.min(100, percent));
-  const filled = Math.max(0, Math.min(BAR_WIDTH, Math.round((clamped / 100) * BAR_WIDTH)));
-  return `${"█".repeat(filled)}${"░".repeat(BAR_WIDTH - filled)}`;
+  const filled = clamped > 0 ? Math.max(1, Math.round((clamped / 100) * BAR_WIDTH)) : 0;
+  return { filled: "█".repeat(filled), empty: "░".repeat(BAR_WIDTH - filled) };
 }
 
 /** Last assistant step carrying token usage, after the most recent completed
  * compaction and before the revert boundary — the same window the host uses
  * for its own context readout. */
+type AssistantWithUsage = SessionMessageAssistant & {
+  tokens: NonNullable<SessionMessageAssistant["tokens"]>;
+};
+
+function assistantMessagesWithUsage(messages: readonly SessionMessageInfo[], boundary?: string): AssistantWithUsage[] {
+  const boundaryIndex = boundary ? messages.findIndex((message) => message.id === boundary) : -1;
+  if (boundary && boundaryIndex === -1) return [];
+  const end = boundaryIndex === -1 ? messages.length : boundaryIndex;
+  return messages.filter(
+    (message, index): message is AssistantWithUsage =>
+      message.type === "assistant" && message.tokens !== undefined && index < end,
+  );
+}
+
 function lastAssistantWithUsage(messages: readonly SessionMessageInfo[], boundary?: string) {
   const boundaryIndex = boundary ? messages.findIndex((message) => message.id === boundary) : -1;
   if (boundary && boundaryIndex === -1) return undefined;
@@ -38,10 +52,7 @@ function lastAssistantWithUsage(messages: readonly SessionMessageInfo[], boundar
     (message, index) => message.type === "compaction" && message.status === "completed" && index < end,
   );
   return messages.findLast(
-    (
-      message,
-      index,
-    ): message is SessionMessageAssistant & { tokens: NonNullable<SessionMessageAssistant["tokens"]> } =>
+    (message, index): message is AssistantWithUsage =>
       message.type === "assistant" && message.tokens !== undefined && index > compactionIndex && index < end,
   );
 }
@@ -53,8 +64,14 @@ function View(props: { context: Plugin.Context; sessionID: string }) {
   const models = createMemo(() => props.context.data.location.model.list(session()?.location));
 
   const usage = createMemo(() => {
+    const previous = assistantMessagesWithUsage(messages(), session()?.revert?.messageID);
     const last = lastAssistantWithUsage(messages(), session()?.revert?.messageID);
     if (!last) return undefined;
+    const cacheReadTokens = previous.reduce((total, message) => total + message.tokens.cache.read, 0);
+    const totalInputTokens = previous.reduce(
+      (total, message) => total + message.tokens.input + message.tokens.cache.read + message.tokens.cache.write,
+      0,
+    );
     const tokens =
       last.tokens.input + last.tokens.output + last.tokens.reasoning + last.tokens.cache.read + last.tokens.cache.write;
     if (tokens <= 0) return undefined;
@@ -64,14 +81,8 @@ function View(props: { context: Plugin.Context; sessionID: string }) {
     return {
       tokens,
       contextWindow: model?.limit.context ?? 0,
-      cachePercent:
-        last.tokens.input + last.tokens.cache.read + last.tokens.cache.write > 0
-          ? Math.round(
-              (last.tokens.cache.read /
-                (last.tokens.input + last.tokens.cache.read + last.tokens.cache.write)) *
-                100,
-            )
-          : undefined,
+      cacheHitPercent:
+        totalInputTokens > 0 ? Math.round((cacheReadTokens / totalInputTokens) * 10000) / 100 : undefined,
     };
   });
 
@@ -83,14 +94,16 @@ function View(props: { context: Plugin.Context; sessionID: string }) {
   const detailLine = createMemo(() => {
     const state = usage();
     const limitText = state && state.contextWindow > 0 ? formatInt(state.contextWindow) : "--";
-    const cacheText = state?.cachePercent === undefined ? "--" : `${state.cachePercent}%`;
+    const cacheText = state?.cacheHitPercent === undefined ? "--" : `${state.cacheHitPercent}%`;
     return `${formatInt(state?.tokens ?? 0)} / ${limitText} / ${cacheText} / ${formatMoney(cost())}`;
   });
+
+  const bar = createMemo(() => buildBar(percent()));
 
   const color = createMemo(() => {
     const value = percent();
     const feedback = props.context.theme.text.feedback;
-    return value >= 90 ? feedback.error.default : value >= 70 ? feedback.warning.default : feedback.success.default;
+    return value >= 90 ? feedback.error.base : value >= 70 ? feedback.warning.base : feedback.success.base;
   });
 
   return (
@@ -100,7 +113,8 @@ function View(props: { context: Plugin.Context; sessionID: string }) {
           Context
         </text>
         <box flexDirection="row" gap={1}>
-          <text fg={color()}>{buildBar(percent())}</text>
+          <text fg={color()}>{bar().filled}</text>
+          <text fg={props.context.theme.text.muted}>{bar().empty}</text>
           <text fg={color()}> {percent()}%</text>
         </box>
         <text fg={props.context.theme.text.base}>{detailLine()}</text>
